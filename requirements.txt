@@ -1,0 +1,11 @@
+appdirs==1.4.3
+enum==0.4.6
+funcsigs==1.0.2
+mock==2.0.0
+packaging==16.8
+pbr==3.0.0
+pyparsing==2.2.0
+requests==2.14.1
+six==1.10.0
+slackclient==1.0.5
+websocket-client==0.40.0
