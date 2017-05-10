@@ -37,4 +37,6 @@ The example below assumes the bot name `queuesem`.
 * **status x, y, z, ...** - status of resources
 * **status-all** - status of everything I know of
 
+Sample session:
 
+![Sample session](https://github.com/bluedenim/slackbot-resource-queue/blob/master/images/sample_session.png)
