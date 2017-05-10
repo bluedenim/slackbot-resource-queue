@@ -37,7 +37,4 @@ The example below assumes the bot name `queuesem`.
 * **status x, y, z, ...** - status of resources
 * **status-all** - status of everything I know of
 
-**TO DO**
-Sequence for queuing up for a resource, multiple users, getting to a resource, etc.
-
 
