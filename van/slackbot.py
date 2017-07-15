@@ -5,12 +5,14 @@ import time
 from slackclient import SlackClient
 
 import events
-from env_reservation import EnvReservation
+from res_reservation import ResourceReservation
 from resource_event_listener import ResourceEventListener
+from conversation_listener import ConversationListener
 from users import Users
 
 BOT_ID = os.environ.get('BOT_ID')
-SLACK_BOT_TOKEN = os.environ.get('BOT_TOKEN')
+BOT_API_TOKEN = os.environ.get('BOT_API_TOKEN')
+
 READ_WEBSOCKET_DELAY = 1
 
 
@@ -120,16 +122,18 @@ def is_not_none(obj):
     return obj is not None
 
 
-slack_client = SlackClient(SLACK_BOT_TOKEN)
+slack_client = SlackClient(BOT_API_TOKEN)
 users = Users(slack_client)
-processor = EnvReservation(users=users)
+processor = ResourceReservation(users=users)
 
-events.add_listener(ResourceEventListener())
+events.add_listener(ResourceEventListener(users))
+events.add_listener(ConversationListener(users))
 
 if slack_client.rtm_connect():
     print "Connected and running"
     while True:
         for message_dict in slack_client.rtm_read():
+            print "Message read: {}".format(message_dict)
             try:
                 if is_message_to_bot(message_dict, AT_BOT):
                     response = process_message(message_dict, processor) or {}
