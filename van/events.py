@@ -6,6 +6,9 @@ class EventType(Enum):
     user_removed = 'user_removed'
     user_added = 'user_added'
     all_users_removed = 'all_users_removed'
+    hello = 'hello'
+    help = 'help'
+    status = 'status'
 
 _LISTENERS = Set()
 
@@ -23,6 +26,14 @@ class BotEvent:
     to the event.)
     """
     def __init__(self, type, channel=None, user=None, resource=None):
+        """
+        Construct an instance of a BOT event object.
+
+        :param type: the event type
+        :param channel: the channel used to trigger the event
+        :param user: the user who triggered the event
+        :param resource: the resource the event applies to
+        """
         self.type = type
         self.channel = channel
         self.user = user
@@ -46,7 +57,7 @@ def notify(bot_event, **kwargs):
             obj_method = getattr(listener, method_name)
             if obj_method:
                 responses.extend(obj_method(bot_event, **kwargs))
-        except AttributeError:
+        except AttributeError as e:
             print "Listener {} does not handle {}".format(
                 listener, method_name)
         except Exception as e:

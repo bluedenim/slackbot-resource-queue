@@ -1,3 +1,6 @@
+from van.message_formatting import format_users, format_user
+
+
 class ResourceEventListener:
     """
     Listener for events to append additional responses depending on the state of
@@ -5,8 +8,8 @@ class ResourceEventListener:
     a resource, the next user in the queue is notified.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, users):
+        self.users = users
 
     def _env_and_user(self, **kwargs):
         return kwargs.get('env_reservation'), kwargs.get('user')
@@ -16,7 +19,7 @@ class ResourceEventListener:
         if queue:
             return "*{}* queued with *{}*".format(
                resource,
-               ', '.join(env_reservation.format_users(queue, active=False)))
+               ', '.join(format_users(queue, active=False, users=self.users)))
         else:
             return "*{}* is open".format(resource)
 
@@ -30,9 +33,16 @@ class ResourceEventListener:
         :return: responses to the event
         """
         responses = []
-        env_reservation, removed_user = self._env_and_user(**kwargs)
-        if env_reservation and removed_user:
-            if bot_event.user == removed_user:
+        env_reservation, queue_head_pre_remove = self._env_and_user(**kwargs)
+        if env_reservation and queue_head_pre_remove:
+            responses.append(
+                "Removed {} from {}.".format(
+                    format_user(bot_event.user, users=self.users),
+                    bot_event.resource)
+            )
+            if bot_event.user == queue_head_pre_remove:
+                # The event user (the one removed) WAS the head of the queue
+                # before the remove.
                 queue = env_reservation.get_queued(bot_event.resource)
                 responses.append(self._format_queue_status(
                     bot_event.resource,
@@ -41,7 +51,7 @@ class ResourceEventListener:
                     # Notify new head of queue
                     responses.append(
                         "{}: you are up for *{}*! :thumbsup:".format(
-                            env_reservation.format_user(queue[0]),
+                            format_user(queue[0], users=self.users),
                             bot_event.resource))
         return responses
 
@@ -66,7 +76,7 @@ class ResourceEventListener:
                     responses.append(
                         "{}: you are up for *{}* since you're first."
                         " :thumbsup:".format(
-                            env_reservation.format_user(added_user),
+                            format_user(added_user, users=self.users),
                             bot_event.resource))
         return responses
 
@@ -85,8 +95,8 @@ class ResourceEventListener:
         if env_reservation and removed_users:
             responses.append(
                 "Removed {} from *{}*".format(
-                    ', '.join(env_reservation.format_users(
-                        removed_users, active=False)),
+                    ', '.join(format_users(
+                        removed_users, active=False, users=self.users)),
                     bot_event.resource))
         responses.append("*{}* is open".format(bot_event.resource))
         return responses
