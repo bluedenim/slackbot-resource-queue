@@ -10,19 +10,31 @@ A Slack bot to manage resource queues
 ## Set up
 * Set these environment variables:
   * BOT_ID - The ID for the bot 
-  * BOT_TOKEN - The token for the bot
+  * BOT_API_TOKEN - The API token for the bot to use
   
 Windows example:
 ```
-set BOT_ID=A234456C
-set BOT_TOKEN=xobx-1133333544-a34ecdeerr656546
+set BOT_ID=A212356C
+set BOT_API_TOKEN=xobx-1133333544-a34ecde123656546
 ```
 * Download imported modules 
   * `virtualenv` use is recommended
   * `pip install -r requirements.txt` to download prereq modules
   
 ## Running
-`python van\slackbot.py` (for Windows)
+### Windows
+```
+set PYTHONPATH=<project location>
+cd <project location>
+python van\slackbot.py
+```
+
+### Non-Windows
+```
+export PYTHONPATH=<project location>
+cd <project location>
+python van/slackbot.py
+```
 
 ## Commands
 Issuing a command to the bot takes the form of a post directed to the bot name. *Note that the bot name depends totally on the bot's configuration.*
@@ -34,8 +46,7 @@ The example below assumes the bot name `queuesem`.
 * **help** - help message (this list)
 * **remove x** - removes you from resource x
 * **remove-all x** - frees up resource x
-* **status x, y, z, ...** - status of resources
-* **status-all** - status of everything I know of
+* **status** - status of resources
 
 Sample session:
 
