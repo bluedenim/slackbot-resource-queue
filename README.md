@@ -23,6 +23,14 @@ If the bot ID is not known, try running this (setting the environment variable `
 pipenv run python print_user_ids.py
 ```
 
+## Updating requirements.txt
+The project uses Pipfile. However, Github's actions currently expects the older `requirements.txt`. Run this 
+after updating dependencies with `pipenv`:
+
+```
+pipenv run pip freeze > requirements.txt
+```
+
   
 ## Running
 ```
