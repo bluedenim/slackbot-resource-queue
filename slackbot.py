@@ -1,6 +1,5 @@
 import os
 
-from slack import WebClient
 from slack.rtm.client import RTMClient
 
 from van import logs
@@ -48,12 +47,15 @@ def message_processor(bot_id, user_store, processor):
 
 if '__main__' == __name__:
     bot_token = os.environ.get('BOT_API_TOKEN')
+    bot_id = os.environ.get('BOT_ID')
     rtm_client = RTMClient(token=bot_token, auto_reconnect=True)
     user_store = UserStore()
-    bot_user = user_store.search_for_user('resq', WebClient(token=bot_token))
-    if bot_token and bot_user:
-        bot_id = bot_user['id']
+    if bot_token and bot_id:
         processor = ResourceReservationProcessor(user_store=user_store)
 
         RTMClient.on(event='message', callback=message_processor(bot_id, user_store, processor))
         rtm_client.start()
+    else:
+        LOGGER.error(
+            'Set environment variables BOT_API_TOKEN and BOT_ID and try again.'
+        )

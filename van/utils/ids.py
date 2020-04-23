@@ -21,10 +21,15 @@ def _get_users(bot_token):
     return users
 
 
-def print_user_ids(bot_token):
+def print_user_ids(bot_token, filter_for_bot=True):
     if bot_token:
         for user in _get_users(bot_token):
-            LOGGER.info('ID for "{name}" is {id}'.format(name=user['name'], id=user.get('id')))
+            if user['is_bot'] or not filter_for_bot:
+                LOGGER.info('ID for "{name}" (bot: {is_bot}) is {id}'.format(
+                    name=user['name'],
+                    is_bot=user['is_bot'],
+                    id=user.get('id'),
+                ))
     else:
         LOGGER.warning('Need to set BOT_API_TOKEN env var')
 
