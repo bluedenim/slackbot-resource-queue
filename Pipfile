@@ -9,6 +9,7 @@ pytest = "*"
 
 [packages]
 slackclient = "*"
+requests = "*"
 
 [requires]
 python_version = "3.8"
