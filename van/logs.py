@@ -30,9 +30,21 @@ config = {
 }
 
 
-def init_logging():
+def init_logging() -> None:
+    """
+    Initializes logging configuration using config above.
+
+    Call this at least once when a script/program starts. This is necessary since we're not
+    running in Django or some framework that does it for us.
+    """
     dictConfig(config)
 
 
-def get_logger(name=None):
+def get_logger(name: str = None) -> logging.Logger:
+    """
+    Gets a logger for the name provided.
+
+    :param name: name of the logger
+    :return: Logger instance to be used for logging
+    """
     return logging.getLogger(name)
