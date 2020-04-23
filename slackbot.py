@@ -1,4 +1,5 @@
 import os
+from typing import Callable
 
 from slack.rtm.client import RTMClient
 
@@ -12,7 +13,7 @@ logs.init_logging()
 LOGGER = get_logger(name='van.slackbot')
 
 
-def message_processor(bot_id, user_store, processor):
+def message_processor(bot_id: str, user_store: UserStore, processor: ResourceReservationProcessor) -> Callable:
     """
     A thunk to return a message processor callback to handle message events from Slack.
 
@@ -48,14 +49,12 @@ def message_processor(bot_id, user_store, processor):
 if '__main__' == __name__:
     bot_token = os.environ.get('BOT_API_TOKEN')
     bot_id = os.environ.get('BOT_ID')
-    rtm_client = RTMClient(token=bot_token, auto_reconnect=True)
-    user_store = UserStore()
     if bot_token and bot_id:
+        rtm_client = RTMClient(token=bot_token, auto_reconnect=True)
+        user_store = UserStore()
         processor = ResourceReservationProcessor(user_store=user_store)
 
         RTMClient.on(event='message', callback=message_processor(bot_id, user_store, processor))
         rtm_client.start()
     else:
-        LOGGER.error(
-            'Set environment variables BOT_API_TOKEN and BOT_ID and try again.'
-        )
+        LOGGER.error('Set environment variables BOT_API_TOKEN and BOT_ID and try again.')

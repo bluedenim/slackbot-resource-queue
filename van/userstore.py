@@ -17,7 +17,7 @@ class UserStore:
     implementation and data source.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.users = {}
 
     def _load_users(self, slack_client: WebClient) -> List[Dict]:

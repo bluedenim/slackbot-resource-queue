@@ -28,7 +28,7 @@ class ResourceReservation:
     """
     Tracks resource reservations to user IDs.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         self.resources = defaultdict(OrderedDictType[str, str])
 
     def queue(self, resource: str, user_id: str, to_front=False) -> bool:
