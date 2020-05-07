@@ -25,8 +25,9 @@ def print_user_ids(bot_token, filter_for_bot=True):
     if bot_token:
         for user in _get_users(bot_token):
             if user['is_bot'] or not filter_for_bot:
-                LOGGER.info('ID for "{name}" (bot: {is_bot}) is {id}'.format(
+                LOGGER.info('ID for "{name}"/"{real_name}" (bot: {is_bot}) is {id}'.format(
                     name=user['name'],
+                    real_name=user['real_name'],
                     is_bot=user['is_bot'],
                     id=user.get('id'),
                 ))

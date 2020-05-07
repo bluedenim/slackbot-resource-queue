@@ -20,14 +20,15 @@ def slack_web_client():
 
 
 def test_load_users(slack_web_client):
-    user_store = UserStore()
-    assert user_store._load_users(slack_web_client) == MOCK_USERS
+    user_store = UserStore(slack_web_client)
+    assert user_store._load_users() == MOCK_USERS
 
 
 def test_load_users_error(slack_web_client):
     slack_web_client.api_call = MagicMock(side_effect=Exception('ha ha ha'))
-    user_store = UserStore()
-    assert user_store._load_users(slack_web_client) == []
+    user_store = UserStore(slack_web_client)
+    with pytest.raises(Exception):
+        user_store._load_users()
 
 
 def test_lookup_user_info(slack_web_client):
@@ -36,30 +37,34 @@ def test_lookup_user_info(slack_web_client):
         'name': 'jsmith',
     }
     slack_web_client.users_info.return_value = user_info
-    user_store = UserStore()
-    assert user_store.lookup_user_info('12345', slack_web_client) == user_info
+    user_store = UserStore(slack_web_client)
+    assert user_store.lookup_user_info('12345') == user_info
 
 
 def test_lookup_user_info_error(slack_web_client):
     slack_web_client.users_info.side_effect = Exception('ha ha ha')
-    user_store = UserStore()
-    assert user_store.lookup_user_info('12345', slack_web_client) is None
+    user_store = UserStore(slack_web_client)
+    assert user_store.lookup_user_info('12345') is None
 
 
 def test_get_users(slack_web_client):
-    user_store = UserStore()
+    user_store = UserStore(slack_web_client)
     user_store._load_users = MagicMock(return_value=MOCK_USERS)
-    users = user_store.get_users(slack_web_client)
+    users = user_store.get_users()
 
     for mock_user in MOCK_USERS:
         assert users[mock_user['id']] == mock_user
-        assert user_store.get_cached_user_info(mock_user['id'], slack_web_client) == mock_user
+        assert user_store.get_cached_user_info(mock_user['id']) == mock_user
 
 
 def test_search_for_user(slack_web_client):
-    user_store = UserStore()
+    user_store = UserStore(slack_web_client)
     user_store._load_users = MagicMock(return_value=MOCK_USERS)
 
     for mock_user in MOCK_USERS:
-        assert user_store.search_for_user(mock_user['name'], slack_web_client) == mock_user
-        assert user_store.search_for_user(mock_user['real_name'], slack_web_client) == mock_user
+        assert user_store.search_for_user(mock_user['name']) == mock_user
+        assert user_store.search_for_user(mock_user['real_name']) == mock_user
+
+
+if __name__ == '__main__':
+    pytest.main()

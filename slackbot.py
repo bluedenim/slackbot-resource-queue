@@ -1,8 +1,10 @@
 import os
 from typing import Callable
 
+from slack import WebClient
 from slack.rtm.client import RTMClient
 
+from responses import Responder
 from van import logs
 from van.logs import get_logger
 from van.res_reservation import ResourceReservationProcessor
@@ -36,13 +38,11 @@ def message_processor(bot_id: str, user_store: UserStore, processor: ResourceRes
                     'rtm_client': payload['rtm_client'],
                     'web_client': payload['web_client'],
                 }
-                responses = processor.process_message_text(tokens[1:], context)
-                if responses:
-                    payload['web_client'].chat_postMessage(
-                        channel=data['channel'],
-                        text='\n'.join(responses),
-                        # thread_ts=data['ts']
-                    )
+
+                responder = Responder(data['channel'], payload['web_client'])
+                for response in processor.process_message_text(tokens[1:], context):
+                    responder.respond(response)
+
     return callback
 
 
@@ -51,7 +51,7 @@ if '__main__' == __name__:
     bot_id = os.environ.get('BOT_ID')
     if bot_token and bot_id:
         rtm_client = RTMClient(token=bot_token, auto_reconnect=True)
-        user_store = UserStore()
+        user_store = UserStore(WebClient(token=bot_token))
         processor = ResourceReservationProcessor(user_store=user_store)
 
         RTMClient.on(event='message', callback=message_processor(bot_id, user_store, processor))
