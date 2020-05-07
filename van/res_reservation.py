@@ -12,10 +12,10 @@ from typing import (
     OrderedDict as OrderedDictType,
 )
 
-from slack import WebClient
-
-from van.userstore import UserStore
 from van.logs import get_logger
+from van.message_formatting import format_at_user
+from van.responses import Response
+from van.userstore import UserStore
 
 
 HandlerEntry = namedtuple('HandlerEntry', ['method', 'help_info'])
@@ -45,6 +45,19 @@ class ResourceReservation:
                 resource_queue.move_to_end(user_id, not to_front)
                 updated = True
         return updated
+
+    def get_queue_len(self, resource: str) -> int:
+        length = 0
+        if resource in self.resources:
+            length = len(self.resources[resource])
+        return length
+
+    def get_user_id_at_front(self, resource: str) -> Optional[str]:
+        user_id = None
+        ordered_dict = self.resources.get(resource)
+        if ordered_dict:
+            user_id = next(iter(self.resources[resource].values()))
+        return user_id
 
     def remove(self, resource: str, user_id: str) -> bool:
         """
@@ -99,14 +112,18 @@ class ResourceReservationProcessor:
             'help': HandlerEntry(method=self.help, help_info='*help* - this message')
         }
 
-    def _user_name_for_id(self, user_id: str, slack_client: WebClient) -> str:
-        user_name = None
-        if user_id and slack_client:
-            user = self.user_store.get_cached_user_info(user_id, slack_client) or {}
-            user_name = user.get('real_name')
+    def _user_name_for_id(self, user_id: str) -> str:
+        if not user_id:
+            raise ValueError('user_id is required')
+        user = self.user_store.get_cached_user_info(user_id) or {}
+        user_name = user.get('real_name') or user.get('name')
         return user_name or user_id
 
-    def hello(self, params: List[str], context_dict: Dict[str, Any]) -> List[str]:
+    @staticmethod
+    def _compose_next_up_msg(resource: str, user_id: str) -> str:
+        return f'{format_at_user(user_id)} : you are up for *{resource}* '
+
+    def hello(self, params: List[str], context_dict: Dict[str, Any]) -> List[Response]:
         """
         A user (context_dict['user_id']) sent a 'Hello' message.
 
@@ -117,10 +134,12 @@ class ResourceReservationProcessor:
         :return: response messages
         """
         return [
-            'Hello back, {}!'.format(self._user_name_for_id(context_dict['user_id'], context_dict['web_client']))
+            Response.broadcast_response(
+                'Hello back, {}!'.format(self._user_name_for_id(context_dict['user_id']))
+            )
         ]
 
-    def add(self, params: List[str], context_dict: Dict[str, Any]) -> List[str]:
+    def add(self, params: List[str], context_dict: Dict[str, Any]) -> List[Response]:
         """
         A user (context_dict['user_id']) requested to be queued for a resource (params[0])
 
@@ -131,18 +150,22 @@ class ResourceReservationProcessor:
 
         :return: response messages
         """
-        response = []
+        responses = []
         user_id = context_dict['user_id']
         if params:
             resource = params[0]
             if self.reservations.queue(resource, user_id):
-                user = self._user_name_for_id(user_id, context_dict['web_client'])
-                response.append(
-                    f'{user} queued for resource *{resource}*'
+                user = self._user_name_for_id(user_id)
+                responses.append(
+                    Response.broadcast_response(f'{user} queued for resource *{resource}*')
                 )
-        return response
+                if self.reservations.get_queue_len(resource) == 1:
+                    responses.append(
+                        Response.broadcast_response(self._compose_next_up_msg(resource, user_id))
+                    )
+        return responses
 
-    def status(self, params: List[str], context_dict: Dict[str, Any]) -> List[str]:
+    def status(self, params: List[str], context_dict: Dict[str, Any]) -> List[Response]:
         """
         A user has requested status of reserved resources.
 
@@ -151,17 +174,18 @@ class ResourceReservationProcessor:
 
         :return: response messages
         """
-        web_client = context_dict['web_client']
-        response = []
+        responses = []
         for resource, queue in self.reservations.get_resources().items():
             queued_users = ', '.join([
-                self._user_name_for_id(user_id, web_client)
+                self._user_name_for_id(user_id)
                 for user_id in queue.keys()
             ])
-            response.append(f'*{resource}*: {queued_users}')
-        return response
+            responses.append(
+                Response.broadcast_response(f'*{resource}*: {queued_users}')
+            )
+        return responses
 
-    def remove(self, params: List[str], context_dict: Dict[str, Any]) -> List[str]:
+    def remove(self, params: List[str], context_dict: Dict[str, Any]) -> List[Response]:
         """
         A user (context_dict['user']) is releasing a previously-held resource (params[0])
 
@@ -170,16 +194,23 @@ class ResourceReservationProcessor:
 
         :return: response messages
         """
-        response = []
+        responses = []
         user_id = context_dict['user_id']
         if params:
             resource = params[0]
+            head_of_queue = self.reservations.get_user_id_at_front(resource)
             if self.reservations.remove(resource, user_id):
-                user = self._user_name_for_id(user_id, context_dict['web_client'])
-                response.append(f'{user} removed from resource *{resource}*')
-        return response
+                user = self._user_name_for_id(user_id)
+                responses.append(Response.broadcast_response(f'{user} removed from resource *{resource}*'))
 
-    def remove_all(self, params: List[str], context_dict: Dict[str, Any]) -> List[str]:
+                next_up = self.reservations.get_user_id_at_front(resource)
+                if next_up and next_up != head_of_queue:
+                    responses.append(
+                        Response.broadcast_response(self._compose_next_up_msg(resource, next_up))
+                    )
+        return responses
+
+    def remove_all(self, params: List[str], context_dict: Dict[str, Any]) -> List[Response]:
         """
         A user (context_dict['user']) is releasing all queued users from a resource (params[0]).
 
@@ -188,17 +219,17 @@ class ResourceReservationProcessor:
 
         :return: response messages
         """
-        response = []
+        responses = []
         user_id = context_dict['user_id']
         if params:
             resource = params[0]
             if self.reservations.remove_all(resource):
-                user = self._user_name_for_id(user_id, context_dict['web_client'])
-                response.append(f'{user} removed *everyone* from resource *{resource}*')
+                user = self._user_name_for_id(user_id)
+                responses.append(Response.broadcast_response(f'{user} removed *everyone* from resource *{resource}*'))
 
-        return response
+        return responses
 
-    def help(self, params, context_dict) -> List[str]:
+    def help(self, params, context_dict) -> List[Response]:
         """
         A user (context_dict['user']) is requested help
 
@@ -208,8 +239,12 @@ class ResourceReservationProcessor:
         :return: response messages
         """
         return [
-            f'{handler_entry.help_info}'
-            for handler_entry in self.command_handlers.values()
+            Response.broadcast_response(
+                '\n'.join(
+                    f'{handler_entry.help_info}'
+                    for handler_entry in self.command_handlers.values()
+                )
+            )
         ]
 
     def _get_handler_method(self, command: str) -> Optional[Callable]:
@@ -229,7 +264,7 @@ class ResourceReservationProcessor:
                 handler = handler_entry[0]
         return handler
 
-    def process_message_text(self, message_tokens: List[str], context_dict: Dict) -> List[str]:
+    def process_message_text(self, message_tokens: List[str], context_dict: Dict) -> List[Response]:
         """
         Process a message text and return a ProcessResult or None if there is nothing processed.
 

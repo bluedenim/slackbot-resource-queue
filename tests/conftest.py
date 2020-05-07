@@ -17,8 +17,8 @@ MOCK_USERS = [
 def user_store():
     mocked_load_users = MagicMock()
     mocked_load_users.return_value = MOCK_USERS
-
-    mocked_store = UserStore()
+    mocked_client = MagicMock()
+    mocked_store = UserStore(mocked_client)
     mocked_store._load_users = mocked_load_users
 
     return mocked_store

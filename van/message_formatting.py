@@ -34,7 +34,7 @@ def format_user(user_id, user_store: UserStore, slack_client: WebClient, active:
         formatted = format_at_user(user_id)
     else:
         if user_id:
-            user_profile = user_store.get_cached_user_info(user_id, slack_client)
+            user_profile = user_store.get_cached_user_info(user_id)
             if user_profile:
                 formatted = "{}".format(user_profile['name'])
     return formatted

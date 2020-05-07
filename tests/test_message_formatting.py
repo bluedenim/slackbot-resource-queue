@@ -1,6 +1,7 @@
 import unittest
 from unittest import TestCase
 
+from mock import MagicMock
 from slack import WebClient
 
 from van.message_formatting import format_user, format_users
@@ -14,7 +15,8 @@ class MessageFormattingTest(TestCase):
     # TODO: Convert to pytest
 
     def setUp(self):
-        self.users = UserStore()
+        self.mocked_client = MagicMock()
+        self.users = UserStore(self.mocked_client)
         self.users.users = {user['id']: user for user in MOCK_USERS}
 
     def test_format_user(self):

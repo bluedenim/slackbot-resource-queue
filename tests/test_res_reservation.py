@@ -1,9 +1,11 @@
+import pytest
+
 from van.res_reservation import ResourceReservationProcessor
 
 
 def test_hello(reservation_processor: ResourceReservationProcessor):
     responses = reservation_processor.hello(['printer2'], {'user_id': 'user_3', 'web_client': object()})
-    assert responses[0] == 'Hello back, Real User 3!'
+    assert responses[0].message == 'Hello back, Real User 3!'
 
 
 def test_add(reservation_processor: ResourceReservationProcessor):
@@ -22,8 +24,24 @@ def test_status(reservation_processor: ResourceReservationProcessor):
     response = reservation_processor.status([], {'user_id': 'user_3', 'web_client': object()})
 
     assert len(response) == 2
-    assert response[0] == '*printer*: Real User 1, Real User 2'
-    assert response[1] == '*printer2*: Real User 1'
+    assert response[0].message == '*printer*: Real User 1, Real User 2'
+    assert response[1].message == '*printer2*: Real User 1'
+
+
+def test_remove_head(reservation_processor: ResourceReservationProcessor):
+    queue_for_printer = reservation_processor.reservations.resources['printer']
+    assert len(queue_for_printer) == 2
+    assert 'user_1' in queue_for_printer
+    assert 'user_2' in queue_for_printer
+
+    responses = reservation_processor.remove(['printer'], {'user_id': 'user_1', 'web_client': object()})
+
+    # One to announce removal of user_1 and one to announce to user_2 that he's up
+    assert len(responses) == 2
+
+    assert len(queue_for_printer) == 1
+    assert 'user_1' not in queue_for_printer
+    assert 'user_2' in queue_for_printer
 
 
 def test_remove(reservation_processor: ResourceReservationProcessor):
@@ -32,11 +50,14 @@ def test_remove(reservation_processor: ResourceReservationProcessor):
     assert 'user_1' in queue_for_printer
     assert 'user_2' in queue_for_printer
 
-    assert reservation_processor.remove(['printer'], {'user_id': 'user_1', 'web_client': object()})
+    responses = reservation_processor.remove(['printer'], {'user_id': 'user_2', 'web_client': object()})
+
+    # Only one to announce removal of user_2
+    assert len(responses) == 1
 
     assert len(queue_for_printer) == 1
-    assert 'user_1' not in queue_for_printer
-    assert 'user_2' in queue_for_printer
+    assert 'user_1' in queue_for_printer
+    assert 'user_2' not in queue_for_printer
 
 
 def test_remove_all(reservation_processor: ResourceReservationProcessor):
@@ -52,7 +73,8 @@ def test_remove_all(reservation_processor: ResourceReservationProcessor):
 
 def test_help(reservation_processor: ResourceReservationProcessor):
     response = reservation_processor.help([], {})
-    assert len(response) == len(reservation_processor.command_handlers.keys())
+    for entry in reservation_processor.command_handlers.values():
+        assert entry.help_info in response[0].message
 
 
 def test_get_handler_method(reservation_processor: ResourceReservationProcessor):
@@ -72,4 +94,8 @@ def test_process_message_text(reservation_processor: ResourceReservationProcesso
             'web_client': object(),
         }
     )
-    assert response[0] == 'Real User 1 queued for resource *scanner*'
+    assert response[0].message == 'Real User 1 queued for resource *scanner*'
+
+
+if __name__ == '__main__':
+    pytest.main()
